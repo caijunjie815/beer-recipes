@@ -1,0 +1,226 @@
+---
+title: "beer recipes"
+author: "Junjie Cai"
+date: "1 June 2018"
+output: html_document
+---
+## Read and pre-process the file
+```{r}
+library(MASS)
+library(tree)
+library(knitr)
+library(ggplot2)
+library(boot)
+library(class)
+
+rawRecipe = read.csv("recipeData.csv", na.strings = "N/A")
+summary(rawRecipe)
+
+recipes = rawRecipe[,c(4,7:11)]
+recipes = na.omit(recipes)
+# we delete some outliers in data set
+outlier = which(recipes$OG>1.5 | recipes$FG>1.5 | recipes$ABV>15 |recipes$IBU>100 | recipes$Color>40)
+recipes = recipes[-outlier,]
+summary(recipes)
+nrow(recipes)
+```
+
+finally, we get the data which will be actually analyzed in next step.
+
+## Question 1 -- Predict the Style using other variables
+#### KNN function
+Firstly, we standardize variables and then divide standardized dataset into training and test set at 9:1 ratio.
+```{r}
+standardized.recipes= scale(recipes[,-1])
+recipes.std <- data.frame(Style = recipes$Style, standardized.recipes)
+
+set.seed(1234)
+train.row = sample(1:nrow(recipes), 0.9*nrow(recipes))
+recipes.std.train = recipes.std[train.row,]
+recipes.std.test = recipes.std[-train.row,]
+```
+
+Since there are over 200 style of beers, and there are not well distributed, hence I will only focus on those beers which belongs to top 10 numbers of beers.
+
+then we apply KNN function (K from 1 to 100) on our training set.
+```{r eval=FALSE}
+accuracy <- rep(0,50)
+for (i in 1:50) {
+    predicted.style <- knn(recipes.std.train[,-1],recipes.std.test[,-1],recipes.std.train$Style,k=i)
+    accuracy[i] <- sum(recipes.std.test$Style==predicted.style)/length(predicted.style)
+}
+library(ggplot2)
+qplot(1:50,accuracy,geom="line", xlab="K", ylab="Accuracy", main = "Accuracy of KNN")
+```
+
+Obviously, wee can see that the accuracy of KNN increases rapidly from 22% to 31% when K increases from 1 to 12, and then it has a slow increase before K reaches 36, which is around 33%. After that, the accuracy of KNN fluctuates at 33%. The highest accuracy is 33.6% with K=41 when K is up to 50. For K up to 100, highest accuracy is 33.9% with K=100. Hence, there is only slight improvement when K increases.
+
+Consequently, KNN method is not working very well in my dataset, for several reasons. Firstly, since there are more than 60 thousands observations and over 200 labels in my dataset, a low accuracy of KNN method is foreseeing. The KNN method does not work well for the dataset with a lot of labels. In addition, since the K value refers to K neighbors we should consider nearest to the data point, therefore, a large K value will result in a huge amount of computing process, which consumes more memory and computing resources. In fact, it is pretty slow for my computer to process KNN function in this experiment when I apply K up to 100. Or in other hand, we could say that variables in the dataset is not good enough to precisely predict the beer styles when using KNN function.
+
+## Question 2 -- Relationship between `color` and other variables.
+Now I will create a new qualitative variable called "Dark" with the two values ("yes" or "no") to indicate that whether the color of beers is "dark" or not, according to the numeric value of "Color". In this project, a dark beer has the value of "Color" larger than 25.
+
+For obtaining a good result, we firstly pre-process data as the following. We choose the same numbers of observations from the "no" class as the number of "yes" class.
+```{r}
+recipes.X = recipes[,-1] # extract beeer features except the Style 
+recipes.X$Dark = rep("no",nrow(recipes.X))
+recipes.X$Dark[recipes.X$Color>25]="yes"
+recipes.X$Dark = factor(recipes.X$Dark)
+recipes.X$Color = NULL # remove Color
+
+# random choose the same rows of observations from "no" class
+no.rows= which(recipes.X$Dark=="no")
+set.seed(123)
+random.rows= sample(no.rows, length(no.rows)-length(which(recipes.X$Dark=="yes")))
+recipes.X = recipes.X[-random.rows,]
+
+# divide training and test set
+set.seed(12)
+train.rows=sample(1:nrow(recipes.X),0.9*nrow(recipes.X))
+recipes.X.train = recipes.X[train.rows,]
+recipes.X.test = recipes.X[-train.rows,]
+
+qplot(OG, FG, data=recipes.X, colour=Dark, shape=Dark, alpha=I(0.5))
+qplot(OG, ABV, data=recipes.X, colour=Dark, shape=Dark, alpha=I(0.5))
+qplot(OG, IBU, data=recipes.X, colour=Dark, shape=Dark, alpha=I(0.5))
+qplot(FG, ABV, data=recipes.X, colour=Dark, shape=Dark, alpha=I(0.5))
+qplot(FG, IBU, data=recipes.X, colour=Dark, shape=Dark, alpha=I(0.5))
+qplot(ABV, IBU, data=recipes.X, colour=Dark, shape=Dark, alpha=I(0.5))
+qplot(Dark, FG, data=recipes.X, colour=Dark, geom="boxplot")
+qplot(Dark, OG, data=recipes.X, colour=Dark, geom="boxplot")
+qplot(Dark, ABV, data=recipes.X, colour=Dark, geom="boxplot")
+qplot(Dark, IBU, data=recipes.X, colour=Dark, geom="boxplot")
+```
+
+#### Random guessing error rate
+We can simply guess whether the beer is dark or not, according to the percentage of the value of "Dark" in the whole 
+```{r}
+# random guessing error rate
+summary(recipes.X$Dark)
+7763/nrow(recipes.X)
+```
+
+#### Logistic regression
+Then we build the model and then predict the probability of the dark beer. Firstly, we use all features as predictors.
+```{r}
+m.log = glm(Dark~., data = recipes.X.train, family = binomial)
+summary(m.log)
+gl.probs = predict(m.log,type = "response", newdata = recipes.X.test)
+gl.pred=rep ("no" ,nrow(recipes.X.test))
+gl.pred[gl.probs > 0.5]="yes"
+mean(gl.pred!= recipes.X.test$Dark)
+```
+
+According to the result, We could see that P values of "OG", "IBU" and "ABV" are pretty large, which indicates that these three variables are not statistically significant with the response, while the P value of "FG" is small enough to be a good predictor. The positive coefficient suggests that a higher final gravity more likely results in a dark beer. The test error rate of the model using all predictors is 37.73%, which is better than random guessing but not very well. Therefore, I want to find the best features to improve the accuracy of the model.
+
+Since there are only four features in my dataset, thus it is easy to find optimal predictors using best subset selection. Here, I use **backforward subset selection**, and finally get the optimal predictor is "FG". Than we recall the model only using "FG".
+
+```{r}
+m.log = glm(Dark~FG, data = recipes.X.train, family = binomial)
+summary(m.log)
+gl.probs = predict(m.log,type = "response", newdata = recipes.X.test)
+gl.pred=rep ("no" ,nrow(recipes.X.test))
+gl.pred[gl.probs > 0.5]="yes"
+table(gl.pred,recipes.X.test$Dark)
+mean(gl.pred!= recipes.X.test$Dark)
+
+# plot the model with data points.
+qplot(recipes.X.test$FG, gl.probs, data = recipes.X.test, colour= Dark, alpha=I(0.5), xlab = "Final Gravity", ylab = "Probability")
+```
+
+The test error rate has a slight decrease, which is 37.41%. The plot shows that observations with higher final gravity have a higher probability of being a dark beer.
+
+#### logistic regression with non-linear transformations
+Now we are going to use all predictors with their non-linear transformations as our predictors to improve the accuracy of our logistic regression.
+```{r}
+test.error = rep(0,10)
+for (i in 1:10) {
+    m.log.poly = glm(Dark~  poly(FG,i)+poly(OG,i)+poly(ABV,i)+poly(IBU,i), data = recipes.X.train, family = binomial)
+    gl.probs = predict(m.log.poly,type = "response", newdata = recipes.X.test)
+    gl.pred=rep ("no",nrow(recipes.X.test))
+    gl.pred[gl.probs > 0.5]="yes"
+    test.error[i]=mean(gl.pred!= recipes.X.test$Dark)
+}
+summary(m.log.poly)
+plot(1:10, test.error, xlab = "Degree", ylab = "Test error rate", main = "Logistic regression with polynomials", type = "b", col="red")
+test.error
+```
+
+The plot shows the best polynomial degree is 5, at which the test error rate has a significant decrease at 35.22%. The result is not very good but is much better than the logistic model without polynomials and random guessing. In conclusion, the logistic regression using all predictors with their polynomials degree 5 as predictors has the lowest test error rate, which is 35.22%.
+
+#### Linear Discriminant Analysis
+Now we use LDA on our training dataset.
+```{r}
+lda.fit = lda(Dark~ OG +FG +IBU+ ABV, data = recipes.X.train)
+lda.fit
+```
+
+The Prior probabilities of groups show that 49.78% of the training observations are beers with a dark color.
+```{r}
+lda.pred = predict(lda.fit, recipes.X.test)
+lda.class = lda.pred$class
+table(lda.class, recipes.X.test$Dark)
+mean(lda.class != recipes.X.test$Dark)
+```
+
+The test error rate of LDA is 37.41%, which is the same as the logistic regression without polynomials.
+
+#### KNN
+Finally we can apply KNN function on our training dataset, as we regard this problem as a 2-class classification problem. K is up to 100.
+```{R}
+# standardized dataset
+recipes.X.std.train= data.frame(scale(recipes.X.train[,-5]),Dark =recipes.X.train$Dark)
+recipes.X.std.test= data.frame(scale(recipes.X.test[,-5]),Dark =recipes.X.test$Dark)
+
+accuracy <- rep(0,100)
+knn.errors = rep(0,100)
+for (i in 1:100) {
+    predicted.color = knn(recipes.X.std.train[,-5],   recipes.X.std.test[,-5], recipes.X.std.train$Dark, k = i)
+    accuracy[i]=sum(recipes.X.std.test$Dark==predicted.color)/length(predicted.color)
+    knn.errors[i]=1-accuracy[i]
+}
+qplot(1:100,accuracy,geom="line", xlab="K", ylab="Accuracy", main = "Accuracy of KNN 2")+geom_vline(aes(xintercept =27), linetype ="dashed" ,color="red")
+qplot(1:100,knn.errors,geom="line", xlab="K", ylab="Accuracy", main = "test error rate")+geom_vline(aes(xintercept =27), linetype ="dashed" ,color="red")
+```
+
+The plot shows the accuracy of KNN rapidly increases when K increases up to 27. After that, the accuracy fluctuates around at 65%. The highest accuracy is 66.13%, so the test error rate is only 33.87%, which is the lowest one among previous results. Compared with the KNN result for predicting beer styles, we can see that KNN function works well in this experiment. It is not all that surprising, since there are only two labels in this experiment while there are over 200 labels in the former experiment.
+
+#### Decision tree
+We ca also apply decision tree on our dataset.
+```{r}
+m.tree = tree(Dark~., recipes.X.train)
+summary(m.tree)
+plot(m.tree)
+text(m.tree, pretty = 0)
+
+# accuracy of decision tree
+p=predict(m.tree, recipes.X.test, type = "class")
+sum(p!=recipes.X.test$Dark)/length(p)
+p=predict(m.tree, recipes.X.train, type = "class")
+sum(p!=recipes.X.train$Dark)/length(p)
+```
+
+From the result, we can see that train error rate is 36.11% and test error rate is 36.83%. The plot can be interpreted that data items with the final gravity greater than 1.0135 is predicted as dark beer, otherwise are light beer. Hence. the final gravity is the only feature considered to classify the beers.
+
+#### Comparison and conclusion
+Now we compare test error rates of different methods. 
+```{r}
+Method.name = c("Random guessing","Logistic regression", "Logistic regression with polynomials", "KNN", "Linear Discriminant Analysis", "Decision tree")
+Predictors = c("NA", "FG","all predictors with their polynomials","NA", "all predictors","FG")
+Test.error.rate = c("50%","37.41%", "35.22%", "33.87%", "37.41%","36.83%" )
+comparison = data.frame(Method.name,Predictors,Test.error.rate)
+require(knitr)
+kable(comparison)
+```
+
+In conclusion, for the problem of predicting whether a given color is dark or not, the KNN function with the K = 27 works best, and the test error rate is around 33.87%, which seems acceptable.
+
+## Notes ##
+Gravity, in the context of fermenting alcoholic beverages, refers to the specific gravity, or relative density compared to water, of the wort or must at various stages in the fermentation. The concept is used in the brewing and wine-making industries. Specific gravity is measured by a hydrometer, refractometer, pycnometer or oscillating U-tube electronic meter.
+
+Specific gravity is the ratio of the density of a sample to the density of water.
+
+The difference between the original gravity of the wort and the final gravity of the beer is an indication of how much sugar has been turned into alcohol.
+
+The Original Gravity is the specific gravity measured before fermentation.  
+The Final Gravity is the specific gravity measured at the completion of fermentation.
