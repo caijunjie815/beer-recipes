@@ -10,7 +10,11 @@ output: html_document
 Machine learning and statistical analysis have been widely studied and applied in a variety of fields in recent years, especially in business area as companies get benefits from these techniques, thus wining the competition. Therefore, it is common and necessary to analyze features of the product by employing data mining and statistical methods. In this project, a set of supervised learning methods are employed in a classification problem related to home-brewed beer recipes. The data comes from Kaggle.com website, and contain a set of features during fermatation of beers, thus it is a good data source to find realtionship between these features and the final color of the beer. Each observation is classified as either _dark_ beer or _light_ beer. The goal of this project is going to predict the color based on features during fermatation.
 
 ## Data
-_Beer recipes_ dataset contains 21 features  
+_Beer recipes_ dataset contains 21 features and 5 most useful feaatures are showing in Table 1.
+```{r}
+
+```
+
 
 ### Data pre-process
 compare original data and processed data
@@ -36,6 +40,3 @@ compare original data and processed data
 
 
 ## Conclusion
-
-
-
