@@ -1,27 +1,22 @@
 ---
-title: "Data analysis on beer recipes"
+title: "Machine learning on homebrew beer using R"
 author: "Junjie Cai"
 date: "13 June 2018"
-output:
-  html_document: default
-  pdf_document: default
+output: html_document
 ---
-
 ## Abstract
----
-In this paper, machine learning and statistical analysis will be empolyed on a classification problem about homebrew beer recipes, in particular, predicting the color of beers. A variety of models and algorithms, including *logistic regression, decision tree*, and *KNN algorithm*, are used to analyze the dataset. The way to assess the classification model is calculating the *test error rate*, which determines how much the prediction is right on test dataset. As a result, KNN function works best with the lowest error rate at **34.00%** when **K=20**. The result is not very well, due to the accuracy of data source and(i.e. data is uploaded bu users and they can enter whatever they want). Thus, future work will be focused on improvement of accuracy by applying other useful method, such as Support Vector Machines and Random Forests.
+In this paper, machine learning and statistical analysis will be employed on a classification problem about homebrew beer recipes, in particular, predicting the color of beers. A variety of models and algorithms, including *logistic regression, decision tree*, and *KNN algorithm*, are used to analyze the dataset. The way to assess the classification model is calculating the *test error rate*, which determines how much the prediction is right on test dataset. As a result, KNN function works best with the lowest error rate at **34.00%** when **K=20**. The result is not very well, due to the accuracy of data source and(i.e. data is uploaded bu users and they can enter whatever they want). Thus, future work will be focused on improvement of accuracy by applying other useful method, such as Support Vector Machines and Random Forests.
+
 ## Introduction
----
 Machine learning and statistical analysis have been widely studied and applied in a variety of fields in recent years, especially in business area. Companies get benefits from these techniques, thus wining the competition. Therefore, it is common and necessary to analyze features of the product by employing data mining and statistical methods. The types of problems that machine learning algorithms are applied typically consist of *classification* problem, which predict two or more discrete outcomes, and *regression* problems, which predict continues values.
 
-In this project, a set of supervised learning methods are employed in a classification problem related to home-brewed beer recipes. The data comes from Kaggle.com website, and contain a set of variables referring to features in the fermentation of beers, thus it is a good data source to find relationship between these features. Each observation is classified as either _dark_ beer or _light_ beer. The goal of this project is going to predict the final color.
+In this project, a set of supervised learning methods are employed in a classification problem related to home-brewed beer recipes. The data comes from Kaggle.com website, and contain a set of variables referring to features in the fermentation of beers, thus it is a good data source to find relationship between these features. Each observation is classified as either _dark_ beer or _light_ beer. The goal of this project is going to predict the color of beers.
 
 ## Data
----
 _Beer recipes_ dataset is hosted in Kaggle.com website mentioned above, which is a website running data science competitions. The dataset is original sourced from the [Brewer's Friend](https://www.brewersfriend.com/search/)  website, which is a place for users to share their homebrew beers. Users are allowed to upload their homebrew beer recipes by entering values for each feature. It is possible that users just enter whatever they want.
 
 ### Data pre-process
-This original dataset contains 73,861 observations of 22 variables. However, it is necessary to pre process the initial dataset, as most of 22 variables are either not applicable or have no contribution on the goal of the project (e.g., *URL* just refers to the link of the item in [Brewer's Friend](https://www.brewersfriend.com/search/) website).
+This original dataset contains 73,861 observations of 22 variables. However, it is necessary to pre process the initial dataset, as most of 22 variables are either not applicable or have no contribution on the goal of the project (e.g., **URL** just refers to the link of the item in [Brewer's Friend](https://www.brewersfriend.com/search/) website).
 ```{r include=FALSE}
 library(MASS)
 library(tree)
@@ -37,7 +32,6 @@ recipes = na.omit(recipes)
 outlier = which(recipes$OG>1.5 | recipes$FG>1.5 | recipes$ABV>15 |recipes$IBU>100 | recipes$Color>40)
 recipes = recipes[-outlier,]
 ```
-
 For pre-processing, 5 most useful variables are selected from the original dataset, and hence make up a new dataset with 63,949 observations of 6 columns, as shown in **Table 1**.
 
 **Table 1 -- 5 most useful Variables**
@@ -52,7 +46,7 @@ recipes.X = recipes[,-1] # extract beeer features except the Style
 |4        |IBU      |international bitterness unit, a numeric measure of bitterness of the beer|
 |5        |Color    |numeric value of the beer color  |
 
-Further, in order to obtain a good result, the quantitative variable *Color* is transformed to the qualitative variable *Dark* with two values ("yes" or "no"). Each observation with the value of *color* greater than 25 is classified into "yes" label, otherwise "no", and then we remove *Color* variable, as shown in  **Table 2**.
+Further, in order to obtain a good result, the quantitative variable **Color** is transformed to the qualitative variable **Dark** with two values (**yes** or **no**). Each observation with the value of **color** greater than 25 is classified into **yes** label, otherwise **no**, and then we remove **Color** variable, as shown in **Table 2**.
 ```{r include=FALSE}
 recipes.X$Dark = rep("no",nrow(recipes.X))
 recipes.X$Dark[recipes.X$Color>25]="yes"
@@ -61,6 +55,7 @@ recipes.X$Color = NULL # remove Color
 ```
 
 **Table 2 -- Final variables with a qualititative variable _Dark_**
+
 |ID |Variables|Types  |
 |---|---------|-------|
 |1  |OG       |numeric|
@@ -69,14 +64,13 @@ recipes.X$Color = NULL # remove Color
 |4  |IBU      |numeric|
 |5  |Dark     |factor |
 
-After that, we extract the same numbers of items with "no" label as "yes" label, which benefits to reduce variance. Finally, we obtain the dataset which will be analyzed in this project.
+After that, we extract the same numbers of items with **no** label as **yes** label, which benefits to reduce variance. Finally, we obtain the dataset which will be analyzed in this project.
 ```{r include=FALSE}
 # random choose the same rows of observations from "no" class
 no.rows= which(recipes.X$Dark=="no")
 set.seed(123)
 random.rows= sample(no.rows, length(no.rows)-length(which(recipes.X$Dark=="yes")))
 recipes.X = recipes.X[-random.rows,]
-
 # divide training and test set
 set.seed(12)
 train.rows=sample(1:nrow(recipes.X),0.9*nrow(recipes.X))
@@ -84,8 +78,26 @@ recipes.X.train = recipes.X[train.rows,]
 recipes.X.test = recipes.X[-train.rows,]
 ```
 ### Feature analysis
-Here we are going to roughly look at the relationship between 4 features and _dark_ variable, as shown in Figure 1.
-
+Here we are going to roughly look at the relationship between 4 features and **Dark** variable, as shown in **Figure 1**.
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
 **Figure 1 -- boxplot of variables and _Dark_**
 <div>
 <img src="https://github.com/Eddy-cai/beer-recipes/raw/master/plots/DARK%2BABV.png" width="300px"/>
@@ -95,16 +107,15 @@ Here we are going to roughly look at the relationship between 4 features and _da
 </div>
 
 ## Methods
----
 ### Analysis methods
-In this project, we employe various classification methods to analyze the dataset and try to predict the color of the beer. Fristly, 90% of the dataset is divided into training subset and the others are test subset. Secondly, we apply classification algorithms to build the regression models on our training dataset. After that, the error rate on test dataset (i.e. Test Error Rate) is calculated in order to assess the accuracy of the model. Finally, all test error rates are compared toghther to find the optimal model for our dataset. By the way, a method called *backforward subset selection* is used to find optimal predictors in each regression model.
+In this project, we employ various classification methods to analyze the dataset and try to predict the color of the beer. Firstly, 90% of the dataset is divided into training subset and the others are test subset. Secondly, we apply classification algorithms to build the regression models on our training dataset. After that, the error rate on test dataset (i.e. Test Error Rate) is calculated in order to assess the accuracy of the model. Finally, all test error rates are compared together to find the optimal model for our dataset. By the way, a method called **backforward stepwise selection** is used to find optimal predictors in each regression model.
 
 ### Models and algorithm
 #### Random guessing
-We can simply guess whether the beer is dark or not, according to the percentage of the value of *Dark* in the whole dataset. Since there are same numbers of observations with *yes* and *no* labels, the test error rate is just 50%.
+We can simply guess whether the beer is dark or not, according to the percentage of the value of **Dark** in the whole dataset. Since there are same numbers of observations with **yes** and **no** labels, the test error rate is just **50%**.
 
 #### Logistic regression
-In this project, logistic regression is used to predict the *probability* that the response (**Dark**) belongs to a particular category (**yes** or **no**). Therefore, the response of the logistic regression belongs to [0,1], so that logistic regression is a good way to reduce the range of response, hence reduce the errors. Another advantage of the logistic regression is that it is easy to interprete the relationship between the response and variables.
+In this project, logistic regression is used to predict the *probability* that the response (**Dark**) belongs to a particular category (**yes** or **no**). Therefore, the response of the logistic regression belongs to *[0,1]*, so that logistic regression is a good way to reduce the range of response, hence reduce the errors. Another advantage of the logistic regression is that it is easy to interpret the relationship between the response and variables.
 
 We build the model of logistic regression and then predict the probability of being the dark beer. Firstly, we use all features as predictors of the model.
 
@@ -118,9 +129,9 @@ gl.pred[gl.probs > 0.5]="yes"
 kable(summary(m.log)$coefficients)
 ```
 
-The coefficients of the model is shown as **Table 3**. We could see that P values of *OG*, *IBU* and *ABV* are pretty large, which indicates that these three variables are not statistically significant with the response, while the P value of "FG" is small enough to be a good predictor. The positive coefficient suggests that a higher final gravity more likely results in a dark beer. The test error rate of the model using all predictors is **37.09%**, which is better than random guessing but not very well. Therefore, I want to find the best features to improve the accuracy of the model.
+The coefficients of the model is shown as **Table 3**. We could see that P values of **OG**, **IBU** and **ABV** are pretty large, which indicates that these three variables are not statistically significant with the response, while the P value of "FG" is small enough to be a good predictor. The positive coefficient suggests that a higher final gravity more likely results in a dark beer. The test error rate of the model using all predictors is **37.09%**, which is better than random guessing but not very well. Therefore, I want to find the best features to improve the accuracy of the model.
 
-Since there are only four features in the dataset, therefore it is easy to find optimal predictors using best subset selection. Here, I use *backforward subset selection*, and finally obtain the optimal predictor is _FG_ with the test error rate **36.88%**.
+Since there are only four features in the dataset, therefore it is easy to find optimal predictors using best subset selection. Here, I use **backforward stepwise selection**, and finally obtain the optimal predictor is **FG** with the test error rate **36.88%**.
 
 **Figure 2 -- The logistic regression model with the predictor _FG_**
 ```{r echo=FALSE}
@@ -161,9 +172,16 @@ The plot shows the best polynomial degree is 8, at which the test error rate has
 #### Decision tree
 Tree-based methods can be used to solve both regression and classification problems, depending on what types of responses (i.e. *quantitative* or *qualitative*). For classification tree, each observation is classified into *the most common occuring* class in that region where it belongs to.
 
-One obvious advantage is that tree-based methods are easy to expain to people. Further, trees can easily handle qualitative predictors without the need to
+One obvious advantage is that tree-based methods are easy to explain to people. Further, trees can easily handle qualitative predictors without the need to
 create dummy variables. However, tree does not have a same level of accuracy as other classification methods. The model of decision tree is shown in **Figure 4**.
-
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
 **Figure 4 -- Decison Tree**
 
 ```{r echo=FALSE}
@@ -182,7 +200,7 @@ text(m.tree, pretty = 0)
 The result shows that train error rate is **35.97%** and test error rate is **37.09%**. The plot can be interpreted that data items with the final gravity greater than 1.0145 is predicted as dark beer, otherwise are light beer. Hence. the final gravity is the only feature considered to classify the beers.
 
 #### K-nearest neighbor algorithm
-K-nearest neighbor algorithm is a common and useful way to to classification. simply to say, for each observation, the algorithm considers K nearest neighbors, and directly classify this observation into the most class, and then repeat this step. Therefore, this method does not build a particular model explaing the realtionship between variables and response.A large K will result in a huge amount of computing process, which consumes more memory and computing resources.
+K-nearest neighbor algorithm is a common and useful way to to classification. simply to say, for each observation, the algorithm considers K nearest neighbors, and directly classify this observation into the most class, and then repeat this step. Therefore, this method does not build a particular model explain the relationship between variables and response.A large K will result in a huge amount of computing process, which consumes more memory and computing resources.
 
 **Figure 5 -- Test error rate of KNN function**
 ```{r echo=FALSE}
@@ -202,8 +220,8 @@ qplot(1:100,knn.errors,geom="line", xlab="K", ylab="Accuracy")+geom_vline(aes(xi
 ```
 
 The **Figure 5** shows the accuracy of KNN rapidly increases when K increases up to 20. After that, the test error rate fluctuates around at 35.00%. The lowest test error rate is only **34.00%**, which is the lowest one among previous results.
+
 ## Results and evaluation
----
 The test error rates of each regression method are shown in **Table 4**.
 
 **Table 4 -- Comparison of test error rate of regression methods**
@@ -215,8 +233,12 @@ comparison = data.frame(Method.name,Predictors,Test.error.rate)
 kable(comparison)
 ```
 
-It is clear that for the problem of determining whether a given observation is dark or not, the KNN function with the K = 20 works best, and the test error rate is around **34.00%**, which seems acceptable.
+It is clear that for the problem of determining whether a given observation is dark or not, the KNN function with the **K = 20** works best, and the test error rate is around **34.00%**, which seems acceptable.
+<br>
+<br>
+<br>
+<br>
+<br>
 
 ## Conclusion
----
-In this project, we evaluated a variety of classification models on *homebrew beers* dataset hosted on Kaggle website, and tried to find the features which will affect the color of beers. The KNN function is the best method to predict the color, since it has the lowest classification error rate (**34.00%**) when **K=20**. The result is not very well but acceptable, because the original data is uploaded by users on [Brewer's Friend](https://www.brewersfriend.com/search/), and they can enter whatever they want about beer features. In other words, employed variables are not good enough to predict the color of beers. Furture work will be focused on improving accuracy by employing more variables or using other classification methods, such as Support Vector Machines and Random Forests.
+In this project, we evaluated a variety of classification models on *homebrew beers* dataset hosted on Kaggle website, and tried to find the features which will affect the color of beers. The KNN function is the best method to predict the color, since it has the lowest classification error rate (**34.00%**) when **K=20**. The result is not very well but acceptable, because the original data is uploaded by users on [Brewer's Friend](https://www.brewersfriend.com/search/), and they can enter whatever they want about beer features. In other words, employed variables are not good enough to predict the color of beers. Future work will be focused on improving accuracy by employing more variables or using other classification methods, such as Support Vector Machines and Random Forests.
